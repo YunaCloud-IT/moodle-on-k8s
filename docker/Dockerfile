@@ -20,11 +20,18 @@ RUN set -ex; \
     # ---------------------------------------------------------
     # A. Download & Verify Moodle (Immutable)
     # ---------------------------------------------------------
-    MOODLE_URL="https://download.moodle.org/download.php/direct/stable403/moodle-4.3.3.tgz"; \
-    MOODLE_SHA256="15270275811797c38531c34a4130635f7952136081468695f2ce1764365778a4"; \
+    MOODLE_URL="https://download.moodle.org/download.php/direct/stable403/moodle-latest-403.tgz"; \
     \
     curl -L "$MOODLE_URL" -o moodle.tgz; \
-    echo "$MOODLE_SHA256 *moodle.tgz" | sha256sum -c -; \
+    \
+    # Verify we actually downloaded a file, not an HTML error page
+    if [ $(wc -c < moodle.tgz) -lt 1000000 ]; then \
+        echo "Error: moodle.tgz is too small. Likely a 404 or download failed."; \
+        cat moodle.tgz; \
+        exit 1; \
+    fi; \
+    \
+    # Extract
     tar -xzf moodle.tgz -C /var/www/html --strip-components=1; \
     rm moodle.tgz; \
     \

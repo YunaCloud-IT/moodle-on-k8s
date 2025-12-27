@@ -1,0 +1,62 @@
+name: Build and Push Moodle
+
+on:
+  push:
+    branches:
+      - "main"
+    # Also trigger when you push a tag starting with 'v' (e.g. v4.3.3)
+    tags:
+      - 'v*'
+  workflow_dispatch: # Allows manual triggering from UI
+
+env:
+  # Use your specific Docker Hub repository
+  IMAGE_NAME: itchimonji/moodle
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Docker Buildx (Required for advanced caching)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Login to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. Generate Docker Metadata (Tags)
+      # Automatically generates 'latest' on main, and version tags on releases
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=long
+            type=ref,event=tag
+
+      # 5. Build and Push
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Use GitHub Actions cache to speed up builds significantly
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

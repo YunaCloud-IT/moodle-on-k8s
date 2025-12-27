@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-moodle
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    spec:
+      containers:
+        - name: moodle
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          # A. Environment Variables (The PHP config reads these)
+          env:
+            - name: MOODLE_DB_HOST
+              value: {{ .Values.externalDatabase.host }}
+            - name: MOODLE_DB_PORT
+              value: "{{ .Values.externalDatabase.port }}"
+            - name: MOODLE_DB_NAME
+              value: {{ .Values.externalDatabase.database }}
+
+            # 1. Database User Injection
+            - name: MOODLE_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  # Reads from 'moodle-db-credentials'
+                  name: {{ .Values.externalDatabase.existingSecret.name }}
+                  # Reads the key 'postgres-user'
+                  key: {{ .Values.externalDatabase.existingSecret.userKey }}
+
+            # 2. Database Password Injection (The Secure Entry Point)
+            - name: MOODLE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  # Reads from 'moodle-db-credentials'
+                  name: {{ .Values.externalDatabase.existingSecret.name }}
+                  # Reads the key 'postgres-password'
+                  key: {{ .Values.externalDatabase.existingSecret.passwordKey }}
+
+          # B. Volume Mounts
+          volumeMounts:
+            - name: moodledata
+              mountPath: /var/www/moodledata
+            - name: config-volume
+              mountPath: /var/www/html/config.php
+              subPath: config.php # Important: Mounts single file, not the whole dir
+
+      # C. Volumes Definition
+      volumes:
+        - name: moodledata
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-moodle-pvc
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-moodle-config

@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-moodle-config
+  labels:
+    app: moodle
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+data:
+  config.php: |
+    <?php  // Moodle configuration file
+
+    unset($CFG);
+    global $CFG;
+    $CFG = new stdClass();
+
+    // 1. Database Configuration (Reads from Env Vars for Security)
+    $CFG->dbtype    = 'pgsql';      // Was 'mariadb'
+    $CFG->dblibrary = 'native';     // Remains 'native'
+    $CFG->dbhost    = getenv('MOODLE_DB_HOST');
+    $CFG->dbname    = getenv('MOODLE_DB_NAME');
+    $CFG->dbuser    = getenv('MOODLE_DB_USER');
+    $CFG->dbpass    = getenv('MOODLE_DB_PASSWORD');
+    $CFG->prefix    = 'mdl_';
+    $CFG->dboptions = array (
+      'dbpersist' => 0,
+      'dbport'    => getenv('MOODLE_DB_PORT') ?: 5432, // Default Postgres port
+      'dbsocket'  => '',
+    );
+
+    // 2. Site Configuration
+    // We use the Ingress host defined in values.yaml
+    $CFG->wwwroot   = 'https://{{ .Values.ingress.hostname }}';
+    
+    // 3. Data Directory
+    // Must match the mount path in your Deployment
+    $CFG->dataroot  = '/var/www/moodledata';
+
+    // 4. Permissions
+    // Since we run as non-root (UID 1001), we use 0770 to ensure group access works
+    $CFG->directorypermissions = 0770;
+
+    // 5. Admin User (Used during CLI install)
+    $CFG->admin     = 'admin';
+
+    // 6. Reverse Proxy / SSL Termination Support (CRITICAL for K8s)
+    // K8s Ingress terminates SSL, so traffic reaches the pod as HTTP. 
+    // This tells Moodle to trust the X-Forwarded-Proto header.
+    $CFG->sslproxy = true;
+    
+    // 7. Session Handling (Redis - Recommended for Production)
+    // Uncomment/Template this if you have Redis enabled
+    /*
+    $CFG->session_handler_class = '\core\session\redis';
+    $CFG->session_redis_host = getenv('MOODLE_REDIS_HOST');
+    $CFG->session_redis_port = 6379; 
+    $CFG->session_redis_prefix = 'moodle_prod_sess_';
+    $CFG->session_redis_acquire_lock_timeout = 120;
+    $CFG->session_redis_lock_expire = 7200;
+    */
+
+    require_once(__DIR__ . '/lib/setup.php');
+
+    // There is no php closing tag in this file,
+    // it is intentional because it prevents trailing whitespace problems!

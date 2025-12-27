@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-moodle-cron
+  labels:
+    app: moodle
+    component: cron
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+spec:
+  schedule: "* * * * *" # Moodle requires this to run every minute
+  concurrencyPolicy: Forbid # Prevents job pile-up if one run takes > 1 minute
+  successfulJobsHistoryLimit: 1 # Keep logs clean
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: moodle
+            component: cron
+            release: "{{ .Release.Name }}"
+        spec:
+          restartPolicy: OnFailure
+
+          # Match the Security Context of your Deployment (User 1001)
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            fsGroup: 1001
+
+          containers:
+            - name: moodle-cron
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+
+              # The Command: Runs the Moodle CLI cron script
+              command: ["/usr/local/bin/php", "/var/www/html/admin/cli/cron.php"]
+
+              # 1. Environment Variables
+              # These MUST match your Deployment exactly so config.php works
+              env:
+                - name: MOODLE_DB_HOST
+                  value: {{ .Values.externalDatabase.host }}
+                - name: MOODLE_DB_NAME
+                  value: {{ .Values.externalDatabase.database }}
+                - name: MOODLE_DB_PORT
+                  value: "{{ .Values.externalDatabase.port }}"
+                - name: MOODLE_DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-moodle-secret
+                      key: db-user
+                - name: MOODLE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-moodle-secret
+                      key: db-password
+
+              # 2. Volume Mounts
+              volumeMounts:
+                - name: moodledata
+                  mountPath: /var/www/moodledata
+                - name: config-volume
+                  mountPath: /var/www/html/config.php
+                  subPath: config.php
+
+          # 3. Volumes
+          volumes:
+            - name: moodledata
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-moodle-pvc
+            - name: config-volume
+              configMap:
+                name: {{ .Release.Name }}-moodle-config

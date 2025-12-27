@@ -1,0 +1,46 @@
+{{- if .Values.ingress.enabled -}}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-moodle
+  labels:
+    app: moodle
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+  annotations:
+    # 1. Controller Selection
+    kubernetes.io/ingress.class: {{ .Values.ingress.className | default "nginx" }}
+
+    # 2. Upload Limits (Vital for Moodle)
+    # Allows uploads up to 100MB (match this with PHP.ini settings)
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+
+    # 3. SSL / Cert Manager
+    # Automatically requests a cert from Let's Encrypt
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | default "letsencrypt-prod" }}
+
+    # 4. HTTPS Redirection
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostname | quote }}
+      secretName: {{ .Values.ingress.tlsSecretName | default "moodle-tls" }}
+  rules:
+    - host: {{ .Values.ingress.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-moodle
+                port:
+                  number: {{ .Values.service.port | default 80 }}
+---
+{{- end }}

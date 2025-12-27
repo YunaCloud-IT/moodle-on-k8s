@@ -1,0 +1,115 @@
+# ------------------------------------------------------------------------------
+# Moodle Production Configuration
+# ------------------------------------------------------------------------------
+
+# 1. Global Image Configuration
+# Point this to the custom image you built with the 'pgsql' extension
+image:
+  repository: my-registry.com/moodle-custom
+  tag: "4.3.3-pgsql"
+  pullPolicy: IfNotPresent
+  # Optional: specific pull secrets if your registry is private
+  # pullSecrets:
+  #   - name: my-registry-secret
+
+# 2. Scaling & Availability
+replicaCount: 2  # Minimum 2 for High Availability
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+# 3. Application Security Context
+# Must match the USER instruction in your Dockerfile (UID 1001)
+securityContext:
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hostname: "moodle.example.com"
+  clusterIssuer: "letsencrypt-prod" # Must match your cluster's CertIssuer
+  tlsSecretName: "moodle-prod-tls"
+  annotations: {}
+
+# 6. Database Connection (PostgreSQL)
+# SENSITIVE: These values are injected into the Pod as Environment Variables.
+# Ideally, 'password' should be managed outside this file or encrypted (e.g., SealedSecrets).
+externalDatabase:
+  type: pgsql
+  host: postgres-primary.database.svc.cluster.local
+  port: 5432
+  database: moodle
+
+  # CHANGE: Instead of hardcoding 'user' and 'password' here...
+  # We reference the existing secret:
+  existingSecret:
+    name: "moodle-db-credentials"
+    passwordKey: "postgres-password"
+    userKey: "postgres-user"
+
+# 7. Persistence (Shared Storage)
+# CRITICAL: Must support ReadWriteMany (RWX) for scaling > 1 pod.
+# Examples: NFS, AWS EFS, Azure Files, Google Cloud Filestore.
+persistence:
+  enabled: true
+  storageClass: "nfs-client" # CHANGE THIS to your cluster's RWX storage class
+  accessMode: ReadWriteMany
+  size: 10Gi
+  mountPath: /var/www/moodledata
+
+# 8. Resource Limits (Production Baseline)
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+
+# 9. Moodle Specific Settings
+moodle:
+  # The full URL is vital for Moodle to generate correct links
+  url: "https://moodle.yourdomain.com"
+
+  # Session Handling (Redis) - Highly Recommended
+  # If enabled, update configmap.yaml to uncomment the redis block
+  redis:
+    enabled: false
+    host: "redis-master"
+    port: 6379
+    prefix: "moodle_sess_"
+
+# 10. CronJob Configuration
+cron:
+  schedule: "* * * * *"
+  # Resources for the cron pod (can be lower than web pods)
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# 11. Autoscaling (HPA)
+# Optional: Automatically scale pods based on CPU usage
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # Optional: Scale on memory usage (PHP processes can be memory hungry)
+  targetMemoryUtilizationPercentage: 85

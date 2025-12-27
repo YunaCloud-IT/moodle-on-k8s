@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-moodle
+  labels:
+    app: moodle
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+spec:
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.service.port | default 80 }}
+      # This MUST match the EXPOSE port in your Dockerfile
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: moodle
+    release: "{{ .Release.Name }}"

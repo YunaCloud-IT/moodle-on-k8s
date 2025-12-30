@@ -46,6 +46,25 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.externalDatabase.existingSecret.name }}
                   key: {{ .Values.externalDatabase.existingSecret.passwordKey }}
+            {{- if .Values.tracing.enabled }}
+            # 1. Enable the Extension Logic
+            - name: OTEL_PHP_AUTOLOAD_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.tracing.serviceName | quote }}
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+
+            # 2. Point to your Collector (Jaeger/Tempo/SigNoz)
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.tracing.exporterEndpoint | quote }}
+
+            # 3. Optional: Propagators (connects Moodle traces to Frontend/Gateway traces)
+            - name: OTEL_PROPAGATORS
+              value: "baggage,tracecontext"
+            {{- end }}
           volumeMounts:
             - name: moodledata
               mountPath: /var/www/moodledata

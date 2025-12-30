@@ -88,3 +88,8 @@ metrics:
   token: "YOUR_GENERATED_TOKEN_HERE"
   prometheusLabel: "release"
   prometheusValue: "prometheus-stack"
+
+tracing:
+  enabled: false
+  exporterEndpoint: "http://my-otel-collector.monitoring.svc.cluster.local:4318/v1/traces"
+  serviceName: "moodle-prod"

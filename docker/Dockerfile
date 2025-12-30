@@ -67,6 +67,16 @@ RUN set -ex; \
         echo 'opcache.revalidate_freq = 60'; \
     } > /usr/local/etc/php/conf.d/moodle-hardened.ini; \
     \
+
+    # ---------------------------------------------------------
+    # F. Install Prometheus Metrics Plugin
+    # ---------------------------------------------------------
+    PROMETHEUS_PLUGIN_URL="https://github.com/catalyst/moodle-local_prometheus/archive/refs/heads/master.zip"; \
+    curl -L "$PROMETHEUS_PLUGIN_URL" -o prometheus.zip; \
+    unzip prometheus.zip; \
+    mv moodle-local_prometheus-master /var/www/html/local/prometheus; \
+    rm prometheus.zip; \
+
     # ---------------------------------------------------------
     # E. Permissions & Directory Setup
     # ---------------------------------------------------------

@@ -1,6 +1,6 @@
 # moodle
 
-![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.3.3](https://img.shields.io/badge/AppVersion-4.3.3-informational?style=flat-square)
+![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.3.3](https://img.shields.io/badge/AppVersion-4.3.3-informational?style=flat-square)
 
 A Helm chart for Moodle on Kubernetes
 
@@ -34,6 +34,10 @@ A Helm chart for Moodle on Kubernetes
 | ingress.enabled | bool | `false` |  |
 | ingress.hostname | string | `"moodle.example.com"` |  |
 | ingress.tlsSecretName | string | `"moodle-prod-tls"` |  |
+| metrics.enabled | bool | `false` |  |
+| metrics.prometheusLabel | string | `"release"` |  |
+| metrics.prometheusValue | string | `"prometheus-stack"` |  |
+| metrics.token | string | `"YOUR_GENERATED_TOKEN_HERE"` |  |
 | moodle.redis.enabled | bool | `false` |  |
 | moodle.redis.host | string | `"redis-master"` |  |
 | moodle.redis.port | int | `6379` |  |

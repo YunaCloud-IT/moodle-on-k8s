@@ -82,3 +82,9 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 85
+
+metrics:
+  enabled: false
+  token: "YOUR_GENERATED_TOKEN_HERE"
+  prometheusLabel: "release"
+  prometheusValue: "prometheus-stack"

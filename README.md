@@ -111,3 +111,19 @@ To create a new release of the chart:
 ## 📄 License
 
 Distributed under the MIT License. See LICENSE for more information.
+
+## Prometheus Metrics
+
+1. Log in as Admin in Moodle
+
+2. Go to Site administration > Plugins > Local plugins > Prometheus metrics.
+
+3. Enable the plugin.
+
+4. Security Token:
+
+    - The plugin requires a token to scrape metrics.
+
+    - Copy the System Token shown on that settings page.
+
+    - Alternative: You can whitelist the IP range of your Prometheus server to avoid using tokens, but in Kubernetes, IP ranges change. Using the token is safer.

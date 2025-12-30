@@ -1,0 +1,30 @@
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-moodle
+  labels:
+    app: moodle
+    release: {{ .Release.Name }}
+    # This label is often required for Prometheus to 'see' the monitor
+    # Check your prometheus config (common label: 'release: prometheus')
+    {{- if .Values.metrics.prometheusLabel }}
+    {{ .Values.metrics.prometheusLabel }}: {{ .Values.metrics.prometheusValue }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: moodle
+      release: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      path: /local/prometheus/metrics.php
+      # If you use the Token method:
+      params:
+        token:
+          - "{{ .Values.metrics.token }}"
+      interval: 30s
+      scrapeTimeout: 10s
+---
+{{- end }}

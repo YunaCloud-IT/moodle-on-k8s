@@ -1,43 +1,35 @@
-name: Release Helm Chart
+name: Release Chart to GitHub Pages
 
 on:
   push:
-    tags:
-      - 'chart-*'
+    branches:
+      - main
+    paths:
+      - 'chart/Chart.yaml'
 
 permissions:
   contents: write
 
 jobs:
-  release-chart:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Install Helm
         uses: azure/setup-helm@v4
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
         with:
-          version: v3.14.0
-
-      - name: Lint Chart
-        run: helm lint ./chart
-
-      - name: Package Chart
-        run: |
-          # Packages the chart into a .tgz file
-          helm package ./chart
-          
-          # Output the filename for the next step (e.g., moodle-0.1.0.tgz)
-          echo "CHART_PACKAGE=$(ls *.tgz)" >> $GITHUB_ENV
-
-      - name: Create GitHub Release and Upload Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ${{ env.CHART_PACKAGE }}
-          name: "Moodle Chart ${{ github.ref_name }}"
-          body: "Official Helm Chart release for Moodle."
-          draft: false
-          prerelease: false
+          charts_dir: .
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

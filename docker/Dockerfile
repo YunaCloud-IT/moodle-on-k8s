@@ -1,12 +1,12 @@
 # ==============================================================================
-# Moodle Production Dockerfile (Non-Root, Postgres-Optimized)
+# Moodle Production Dockerfile (Non-Root, Postgres-Optimized, Observability-Ready)
 # ==============================================================================
 FROM php:8.2-apache
 
 # ------------------------------------------------------------------------------
 # LAYER 1: System Dependencies & PHP Extensions
 # ------------------------------------------------------------------------------
-# We install 'unzip' here because it's needed for the Prometheus plugin later
+# UPDATED: Added 'autoconf' and 'build-essential' which are REQUIRED for pecl install
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libzip-dev \
@@ -16,6 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     curl \
     git \
+    autoconf \
+    build-essential \
+    \
+    # 1. Install Standard Moodle Extensions
     && docker-php-ext-install -j$(nproc) \
         gd \
         intl \
@@ -24,6 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         opcache \
         pgsql \
         pdo_pgsql \
+    \
+    # 2. NEW: Compile OpenTelemetry Extension (The "Engine" for Tracing)
+    && pecl install opentelemetry \
+    && docker-php-ext-enable opentelemetry \
+    \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------------------
@@ -71,7 +80,7 @@ RUN set -ex; \
 # ------------------------------------------------------------------------------
 USER 1001
 
-# A. Install Moodle Core (Heavy Step)
+# A. Install Moodle Core
 RUN set -ex; \
     MOODLE_URL="https://download.moodle.org/download.php/direct/stable403/moodle-latest-403.tgz"; \
     curl -L "$MOODLE_URL" -o moodle.tgz; \
@@ -82,17 +91,9 @@ RUN set -ex; \
     rm moodle.tgz
 
 # B. Install Prometheus Metrics Plugin (Vidalia Fork)
-# Optimized: Streams directly from Curl to Tar (No intermediate file = Lowest RAM usage)
 RUN set -ex; \
     mkdir -p /var/www/html/local/prometheus; \
-    \
-    # Use HEAD to automatically get the default branch (main or master)
     PROMETHEUS_PLUGIN_URL="https://github.com/Vidalia/moodle-local_prometheus/archive/HEAD.tar.gz"; \
-    \
-    # 1. Download and Extract in one go
-    # -f = Fail silently on server errors (404) so we catch it
-    # -L = Follow redirects
-    # | tar = Pipe directly to extractor
     curl -fL "$PROMETHEUS_PLUGIN_URL" | tar -xz -C /var/www/html/local/prometheus --strip-components=1
 
 # ------------------------------------------------------------------------------

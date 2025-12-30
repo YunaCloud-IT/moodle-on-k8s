@@ -33,3 +33,10 @@ jobs:
           charts_dir: .
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - id: 'notify_google_chat'
+        uses: 'google-github-actions/send-google-chat-webhook@v0.0.2'
+        if: ${{ inputs.fail_intentionally }}
+        with:
+          webhook_url: '${{ secrets.WEBHOOK_URL }}'
+          mention: "<users/all>"

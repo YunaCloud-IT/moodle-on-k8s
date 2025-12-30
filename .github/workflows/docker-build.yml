@@ -44,6 +44,14 @@ jobs:
             type=sha,format=long
             type=ref,event=tag
 
+      - name: Enable Swap Space
+        run: |
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -54,3 +62,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - id: 'notify_google_chat'
+        uses: 'google-github-actions/send-google-chat-webhook@v0.0.2'
+        if: ${{ inputs.fail_intentionally }}
+        with:
+          webhook_url: '${{ secrets.WEBHOOK_URL }}'
+          mention: "<users/all>"

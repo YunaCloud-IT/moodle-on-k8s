@@ -43,20 +43,25 @@ spec:
               env:
                 - name: MOODLE_DB_HOST
                   value: {{ .Values.externalDatabase.host }}
-                - name: MOODLE_DB_NAME
-                  value: {{ .Values.externalDatabase.database }}
                 - name: MOODLE_DB_PORT
                   value: "{{ .Values.externalDatabase.port }}"
+                - name: MOODLE_DB_NAME
+                  value: {{ .Values.externalDatabase.database }}
+
+                # --- FIX: Point to the Existing Secret ---
                 - name: MOODLE_DB_USER
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Release.Name }}-moodle-secret
-                      key: db-user
+                      # Reads from 'moodle-db-credentials' defined in values.yaml
+                      name: {{ .Values.externalDatabase.existingSecret.name }}
+                      key: {{ .Values.externalDatabase.existingSecret.userKey }}
+
                 - name: MOODLE_DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Release.Name }}-moodle-secret
-                      key: db-password
+                      # Reads from 'moodle-db-credentials'
+                      name: {{ .Values.externalDatabase.existingSecret.name }}
+                      key: {{ .Values.externalDatabase.existingSecret.passwordKey }}
 
               # 2. Volume Mounts
               volumeMounts:

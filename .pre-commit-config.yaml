@@ -30,6 +30,12 @@ repos:
         entry: kubeval
         language: system
         files: kube\/(?!secrets\.yml)
+      - id: helm-lint
+        name: Helm Lint
+        entry: helm lint chart/  # Adjust path to your chart folder
+        language: system
+        files: \.(yaml|yml|tpl)$
+        pass_filenames: false
 
   - repo: https://github.com/Agilicus/pre-commit-hook-k8svalidate.git
     rev: v0.0.8
@@ -37,3 +43,4 @@ repos:
       - id: k8svalidate
         args: [--exclude, "**/*.patch.yaml"]
         files: .yaml$
+        exclude: ^chart/templates/

@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  moodle:
+  - apiVersion: v2
+    appVersion: 4.3.3
+    created: "2025-12-30T08:05:21.082187156Z"
+    description: A Helm chart for Moodle on Kubernetes
+    digest: 036c749f20f64014e7bbcf6d4a396101b8dd93a8b42b64fc196419636d760120
+    name: moodle
+    type: application
+    urls:
+    - https://github.com/YunaCloud-IT/moodle-on-k8s/releases/download/moodle-0.1.1/moodle-0.1.1.tgz
+    version: 0.1.1
+generated: "2025-12-30T08:05:21.082197435Z"

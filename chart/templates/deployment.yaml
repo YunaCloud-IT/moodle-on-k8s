@@ -1,16 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-moodle
+  name: "{{ .Release.Name }}-moodle"
+  labels:
+    app: moodle
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
 spec:
   replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: moodle
+      release: {{ .Release.Name }}
   template:
+    metadata:
+      labels:
+        app: moodle
+        release: {{ .Release.Name }}
     spec:
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
       containers:
         - name: moodle
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-
-          # A. Environment Variables (The PHP config reads these)
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: 8080
+              name: http
           env:
             - name: MOODLE_DB_HOST
               value: {{ .Values.externalDatabase.host }}
@@ -18,38 +36,26 @@ spec:
               value: "{{ .Values.externalDatabase.port }}"
             - name: MOODLE_DB_NAME
               value: {{ .Values.externalDatabase.database }}
-
-            # 1. Database User Injection
             - name: MOODLE_DB_USER
               valueFrom:
                 secretKeyRef:
-                  # Reads from 'moodle-db-credentials'
                   name: {{ .Values.externalDatabase.existingSecret.name }}
-                  # Reads the key 'postgres-user'
                   key: {{ .Values.externalDatabase.existingSecret.userKey }}
-
-            # 2. Database Password Injection (The Secure Entry Point)
             - name: MOODLE_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  # Reads from 'moodle-db-credentials'
                   name: {{ .Values.externalDatabase.existingSecret.name }}
-                  # Reads the key 'postgres-password'
                   key: {{ .Values.externalDatabase.existingSecret.passwordKey }}
-
-          # B. Volume Mounts
           volumeMounts:
             - name: moodledata
               mountPath: /var/www/moodledata
             - name: config-volume
               mountPath: /var/www/html/config.php
-              subPath: config.php # Important: Mounts single file, not the whole dir
-
-      # C. Volumes Definition
+              subPath: config.php
       volumes:
         - name: moodledata
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-moodle-pvc
+            claimName: "{{ .Release.Name }}-moodle-pvc"
         - name: config-volume
           configMap:
-            name: {{ .Release.Name }}-moodle-config
+            name: "{{ .Release.Name }}-moodle-config"

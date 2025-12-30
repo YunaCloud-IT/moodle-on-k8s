@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.1.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: v0.1.15
+    hooks:
+      - id: helmlint
+        exclude: ^(yuna-k8s-ops/sealed-secrets)
+
+  - repo: https://github.com/norwoodj/helm-docs
+    rev: v1.10.0
+    hooks:
+      - id: helm-docs
+        files: (README\.md\.gotmpl|(Chart|requirements|values)\.yaml)$
+
+  - repo: local
+    hooks:
+      - id: kubeval
+        name: kubeval
+        description: Lint kube files with system.
+        entry: kubeval
+        language: system
+        files: kube\/(?!secrets\.yml)
+
+  - repo: https://github.com/Agilicus/pre-commit-hook-k8svalidate.git
+    rev: v0.0.8
+    hooks:
+      - id: k8svalidate
+        args: [--exclude, "**/*.patch.yaml"]
+        files: .yaml$

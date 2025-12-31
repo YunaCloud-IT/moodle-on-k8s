@@ -14,9 +14,11 @@ data:
     global $CFG;
     $CFG = new stdClass();
 
-    // 1. Database Configuration (Reads from Env Vars for Security)
-    $CFG->dbtype    = 'pgsql';      // Was 'mariadb'
-    $CFG->dblibrary = 'native';     // Remains 'native'
+    // -------------------------------------------------------------------------
+    // 1. Database Configuration
+    // -------------------------------------------------------------------------
+    $CFG->dbtype    = 'pgsql';
+    $CFG->dblibrary = 'native';
     $CFG->dbhost    = getenv('MOODLE_DB_HOST');
     $CFG->dbname    = getenv('MOODLE_DB_NAME');
     $CFG->dbuser    = getenv('MOODLE_DB_USER');
@@ -24,40 +26,64 @@ data:
     $CFG->prefix    = 'mdl_';
     $CFG->dboptions = array (
       'dbpersist' => 0,
-      'dbport'    => getenv('MOODLE_DB_PORT') ?: 5432, // Default Postgres port
+      'dbport'    => getenv('MOODLE_DB_PORT') ?: 5432,
       'dbsocket'  => '',
     );
 
+    // -------------------------------------------------------------------------
     // 2. Site Configuration
-    // We use the Ingress host defined in values.yaml
+    // -------------------------------------------------------------------------
     $CFG->wwwroot   = 'https://{{ .Values.ingress.hostname }}';
-    
-    // 3. Data Directory
-    // Must match the mount path in your Deployment
     $CFG->dataroot  = '/var/www/moodledata';
-
-    // 4. Permissions
-    // Since we run as non-root (UID 1001), we use 0770 to ensure group access works
-    $CFG->directorypermissions = 0770;
-
-    // 5. Admin User (Used during CLI install)
     $CFG->admin     = 'admin';
 
-    // 6. Reverse Proxy / SSL Termination Support (CRITICAL for K8s)
-    // K8s Ingress terminates SSL, so traffic reaches the pod as HTTP. 
-    // This tells Moodle to trust the X-Forwarded-Proto header.
+    // Non-root permission fix (UID 1001)
+    $CFG->directorypermissions = 0770;
+
+    // -------------------------------------------------------------------------
+    // 3. Security & Hardening (Production Best Practices)
+    // -------------------------------------------------------------------------
+    // Prevent installing plugins via the UI (Security risk in containerized envs)
+    // You should bake plugins into the Docker image instead.
+    $CFG->disableupdateautodeploy = true;
+
+    // Prevent password hashes from leaking in backups
+    $CFG->includeuserpasswordsinbackup = false;
+
+    // -------------------------------------------------------------------------
+    // 4. Reverse Proxy & SSL (Crucial for Keycloak/OIDC)
+    // -------------------------------------------------------------------------
+    // K8s Ingress terminates SSL. We must trust the headers.
     $CFG->sslproxy = true;
-    
-    // 7. Session Handling (Redis - Recommended for Production)
-    // Uncomment/Template this if you have Redis enabled
-    /*
-    $CFG->session_handler_class = '\core\session\redis';
-    $CFG->session_redis_host = getenv('MOODLE_REDIS_HOST');
-    $CFG->session_redis_port = 6379; 
-    $CFG->session_redis_prefix = 'moodle_prod_sess_';
-    $CFG->session_redis_acquire_lock_timeout = 120;
-    $CFG->session_redis_lock_expire = 7200;
-    */
+
+    // If using Keycloak, simple sslproxy often isn't enough for redirect loops.
+    // This setting ensures Moodle respects the X-Forwarded-Host headers fully.
+    if (getenv('MOODLE_REVERSE_PROXY')) {
+        $CFG->reverseproxy = true;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Redis Session Handling (Performance)
+    // -------------------------------------------------------------------------
+    // We check if the Env Var exists. If yes, we use Redis.
+    // If no, we fall back to file sessions (safe default).
+    if ($redis_host = getenv('MOODLE_REDIS_HOST')) {
+        $CFG->session_handler_class = '\core\session\redis';
+        $CFG->session_redis_host = $redis_host;
+        $CFG->session_redis_port = getenv('MOODLE_REDIS_PORT') ?: 6379;
+        $CFG->session_redis_database = 0;
+        $CFG->session_redis_prefix = 'moodle_sess_';
+        $CFG->session_redis_acquire_lock_timeout = 120;
+        $CFG->session_redis_lock_expire = 7200;
+        // Optional: Use Redis for Application Cache too (requires config in Admin UI usually,
+        // or advanced $CFG->muc_config configuration here)
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. System Paths
+    // -------------------------------------------------------------------------
+    // Explicitly set Ghostscript path (installed in your Dockerfile)
+    $CFG->pathtogs = '/usr/bin/gs';
 
     require_once(__DIR__ . '/lib/setup.php');
 

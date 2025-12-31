@@ -1,18 +1,18 @@
 # ==============================================================================
-# Moodle Production Dockerfile (Non-Root, Postgres-Optimized, Observability-Ready)
+# Moodle Production Dockerfile (Non-Root, Redis-Ready, High-Performance)
 # ==============================================================================
 FROM php:8.2-apache
 
 # ------------------------------------------------------------------------------
 # LAYER 1: System Dependencies & PHP Extensions
 # ------------------------------------------------------------------------------
-# UPDATED: Added 'autoconf' and 'build-essential' which are REQUIRED for pecl install
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libzip-dev \
     libicu-dev \
     libxml2-dev \
     libpq-dev \
+    ghostscript \
     unzip \
     curl \
     git \
@@ -29,10 +29,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pgsql \
         pdo_pgsql \
     \
-    # 2. NEW: Compile OpenTelemetry Extension (The "Engine" for Tracing)
-    && pecl install opentelemetry \
-    && docker-php-ext-enable opentelemetry \
+    # 2. Install Redis (Crucial for Production Caching)
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     \
+    # 3. Cleanup to keep image slim
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------------------
@@ -56,17 +57,18 @@ RUN set -ex; \
         echo 'upload_max_filesize = 100M'; \
         echo 'post_max_size = 100M'; \
         echo 'max_execution_time = 600'; \
-        # CRITICAL: Required for Moodle Gradebook/Permissions
         echo 'max_input_vars = 5000'; \
         echo 'expose_php = Off'; \
-        # Recommended Opcache settings
+        # Opcache Tuning for Production
         echo 'opcache.enable = 1'; \
-        echo 'opcache.memory_consumption = 128'; \
-        echo 'opcache.max_accelerated_files = 10000'; \
+        echo 'opcache.memory_consumption = 256'; \
+        echo 'opcache.max_accelerated_files = 20000'; \
         echo 'opcache.revalidate_freq = 60'; \
+        echo 'opcache.validate_timestamps = 1'; \
+        echo 'opcache.interned_strings_buffer = 16'; \
     } > /usr/local/etc/php/conf.d/moodle-hardened.ini; \
     \
-    # 4. Prepare Directories (Assign ownership while empty to save RAM)
+    # 4. Prepare Directories
     mkdir -p /var/www/moodledata; \
     mkdir -p /var/run/apache2 /var/lock/apache2 /var/log/apache2; \
     chown -R moodle:moodle /var/www/moodledata; \
@@ -90,7 +92,7 @@ RUN set -ex; \
     tar -xzf moodle.tgz -C /var/www/html --strip-components=1; \
     rm moodle.tgz
 
-# B. Install Prometheus Metrics Plugin (Vidalia Fork)
+# B. Install Prometheus Metrics Plugin
 RUN set -ex; \
     mkdir -p /var/www/html/local/prometheus; \
     PROMETHEUS_PLUGIN_URL="https://github.com/Vidalia/moodle-local_prometheus/archive/HEAD.tar.gz"; \

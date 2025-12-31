@@ -88,3 +88,10 @@ metrics:
   token: "YOUR_GENERATED_TOKEN_HERE"
   prometheusLabel: "release"
   prometheusValue: "prometheus-stack"
+
+
+affinity: {}
+
+nodeSelector: {}
+
+tolerations: []

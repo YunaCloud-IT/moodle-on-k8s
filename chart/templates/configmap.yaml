@@ -64,21 +64,35 @@ data:
         $CFG->reverseproxy = true;
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Redis Session Handling (Performance)
-    // -------------------------------------------------------------------------
-    // We check if the Env Var exists. If yes, we use Redis.
-    // If no, we fall back to file sessions (safe default).
+    // =============================================================================
+    // REDIS SESSION CONFIGURATION (Refined)
+    // =============================================================================
     if ($redis_host = getenv('MOODLE_REDIS_HOST')) {
+        // 1. Force TCP Protocol
+        // This explicitly tells the PHP Redis extension to use TCP, avoiding
+        // ambiguity with Unix sockets or other protocols.
+        if (strpos($redis_host, 'tcp://') === false) {
+            $redis_host = 'tcp://' . $redis_host;
+        }
+
         $CFG->session_handler_class = '\core\session\redis';
         $CFG->session_redis_host = $redis_host;
         $CFG->session_redis_port = getenv('MOODLE_REDIS_PORT') ?: 6379;
+
+        // 2. Authentication (Explicitly Removed)
+        // Your tests confirmed Redis has NO password.
+        // Leaving this commented out is critical.
+        // $CFG->session_redis_auth = 'your_password';
+
         $CFG->session_redis_database = 0;
         $CFG->session_redis_prefix = 'moodle_sess_';
         $CFG->session_redis_acquire_lock_timeout = 120;
         $CFG->session_redis_lock_expire = 7200;
-        // Optional: Use Redis for Application Cache too (requires config in Admin UI usually,
-        // or advanced $CFG->muc_config configuration here)
+
+        // 3. Serializer (Optional Stability Fix)
+        // If you see "igbinary" errors in logs, uncomment these lines to force standard PHP serialization.
+        // $CFG->session_redis_compressor = 'none';
+        // $CFG->session_redis_serializer = 'php';
     }
 
     // -------------------------------------------------------------------------

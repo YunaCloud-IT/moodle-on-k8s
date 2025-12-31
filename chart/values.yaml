@@ -62,9 +62,8 @@ moodle:
   url: "https://moodle.yourdomain.com"
   redis:
     enabled: false
-    host: "redis-master"
+    host: "redis-sentinel-master.infra-redis.svc.cluster.local"
     port: 6379
-    prefix: "moodle_sess_"
   proxy:
     sslProxy: true
     reverseProxy: false

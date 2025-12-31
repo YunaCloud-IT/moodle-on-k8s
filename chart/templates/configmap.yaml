@@ -64,21 +64,47 @@ data:
         $CFG->reverseproxy = true;
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Redis Session Handling (Performance)
-    // -------------------------------------------------------------------------
-    // We check if the Env Var exists. If yes, we use Redis.
-    // If no, we fall back to file sessions (safe default).
+    // =============================================================================
+    // FORCE REDIS FOR EVERYTHING (Sessions + MUC)
+    // =============================================================================
     if ($redis_host = getenv('MOODLE_REDIS_HOST')) {
+        // 1. Clean the Host string
+        if (strpos($redis_host, 'tcp://') === false) {
+            $redis_host = 'tcp://' . $redis_host;
+        }
+        $redis_port = getenv('MOODLE_REDIS_PORT') ?: 6379;
+
+        // -------------------------------------------------------------------------
+        // A. SESSION CONFIGURATION
+        // -------------------------------------------------------------------------
         $CFG->session_handler_class = '\core\session\redis';
         $CFG->session_redis_host = $redis_host;
-        $CFG->session_redis_port = getenv('MOODLE_REDIS_PORT') ?: 6379;
+        $CFG->session_redis_port = $redis_port;
         $CFG->session_redis_database = 0;
         $CFG->session_redis_prefix = 'moodle_sess_';
         $CFG->session_redis_acquire_lock_timeout = 120;
         $CFG->session_redis_lock_expire = 7200;
-        // Optional: Use Redis for Application Cache too (requires config in Admin UI usually,
-        // or advanced $CFG->muc_config configuration here)
+        // $CFG->session_redis_auth = ...; // KEEP COMMENTED OUT
+
+        // -------------------------------------------------------------------------
+        // B. CACHE (MUC) CONFIGURATION - THE FIX
+        // -------------------------------------------------------------------------
+        // This overrides whatever broken settings are saved in the Admin UI
+        $CFG->muc_config = $CFG->dataroot . '/muc_config.php'; // Pointer file
+
+        $CFG->forced_plugin_settings = [
+            'tool_mobile' => [
+                'qrcodetype' => 'url',
+            ],
+            // Force the 'default' Redis store to use our working Env Vars
+            'cachestore_redis' => [
+                'test_server' => [
+                    'server' => $redis_host . ':' . $redis_port,
+                    // 'password' => '', // No password
+                    'serializer' => 1, // 1 = PHP Serializer (Safest)
+                ],
+            ],
+        ];
     }
 
     // -------------------------------------------------------------------------

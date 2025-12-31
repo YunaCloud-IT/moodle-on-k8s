@@ -96,13 +96,12 @@ spec:
               value: "{{ .Values.moodle.redis.port }}"
             {{- end }}
 
-            # 3. Reverse Proxy & SSL (Critical for Ingress/Keycloak)
-            # Checks if Ingress is enabled to automatically turn on Reverse Proxy logic
             {{- if .Values.ingress.enabled }}
-            - name: MOODLE_REVERSE_PROXY
-              value: "true"
             - name: MOODLE_SSL_PROXY
-              value: "true"
+              value: {{ .Values.moodle.proxy.sslProxy | quote }}
+
+            - name: MOODLE_REVERSE_PROXY
+              value: {{ .Values.moodle.proxy.reverseProxy | quote }}
             {{- end }}
 
           volumeMounts:

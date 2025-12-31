@@ -54,11 +54,13 @@ data:
     // 4. Reverse Proxy & SSL (Crucial for Keycloak/OIDC)
     // -------------------------------------------------------------------------
     // K8s Ingress terminates SSL. We must trust the headers.
-    $CFG->sslproxy = true;
+    if (getenv('MOODLE_SSL_PROXY') === 'true') {
+        $CFG->sslproxy = true;
+    }
 
     // If using Keycloak, simple sslproxy often isn't enough for redirect loops.
     // This setting ensures Moodle respects the X-Forwarded-Host headers fully.
-    if (getenv('MOODLE_REVERSE_PROXY')) {
+    if (getenv('MOODLE_REVERSE_PROXY') === 'true') {
         $CFG->reverseproxy = true;
     }
 

@@ -65,6 +65,9 @@ moodle:
     host: "redis-master"
     port: 6379
     prefix: "moodle_sess_"
+  proxy:
+    sslProxy: true
+    reverseProxy: false
 
 cron:
   schedule: "* * * * *"

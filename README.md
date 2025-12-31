@@ -96,6 +96,10 @@ To create a new release of the chart:
 
 3. The CI/CD pipeline will automatically package and release it to the Helm Repo.
 
+### Docker Repository
+
+https://hub.docker.com/repository/docker/itchimonji/moodle/general
+
 ## 🤝 Contributing
 
 1. Fork the project

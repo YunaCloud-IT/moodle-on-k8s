@@ -18,7 +18,7 @@ spec:
       template:
         metadata:
           labels:
-            app: moodle
+            app: moodle-cron
             component: cron
             release: "{{ .Release.Name }}"
         spec:
@@ -57,6 +57,21 @@ spec:
                     secretKeyRef:
                       name: {{ .Values.externalDatabase.existingSecret.name }}
                       key: {{ .Values.externalDatabase.existingSecret.passwordKey }}
+
+                {{- if .Values.moodle.redis.enabled }}
+                - name: MOODLE_REDIS_HOST
+                  value: {{ .Values.moodle.redis.host | quote }}
+                - name: MOODLE_REDIS_PORT
+                  value: "{{ .Values.moodle.redis.port }}"
+                {{- end }}
+
+                {{- if .Values.ingress.enabled }}
+                - name: MOODLE_SSL_PROXY
+                  value: {{ .Values.moodle.proxy.sslProxy | quote }}
+
+                - name: MOODLE_REVERSE_PROXY
+                  value: {{ .Values.moodle.proxy.reverseProxy | quote }}
+                {{- end }}
 
               # 2. Volume Mounts
               volumeMounts:
